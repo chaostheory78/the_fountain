@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Fountain</title>
+
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Rajdhani:wght@300;500&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold: #c9a84c;
+      --cyan: #00e5ff;
+      --dark: #040810;
+    }
+
+    body {
+      background: var(--dark);
+      color: white;
+      font-family: 'Rajdhani', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ═══ LOADING SCREEN ═══ */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--dark);
+      z-index: 200;
+      transition: opacity 0.8s ease;
+    }
+
+    #loading-screen.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #loading-title {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      letter-spacing: 6px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 36px;
+      opacity: 0.8;
+    }
+
+    #spiral-wrap {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin-bottom: 36px;
+    }
+
+    #spiral-canvas { width: 280px; height: 280px; display: block; }
+
+    #scan-line {
+      position: absolute;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background: linear-gradient(90deg,
+        transparent 0%, var(--cyan) 30%,
+        rgba(0,229,255,0.9) 50%, var(--cyan) 70%, transparent 100%
+      );
+      box-shadow: 0 0 12px var(--cyan), 0 0 30px rgba(0,229,255,0.3);
+      animation: scanMove 2.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scanMove {
+      0%   { top: 5%;  opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { top: 92%; opacity: 0; }
+    }
+
+    #spiral-wrap::before, #spiral-wrap::after,
+    #corner-tr, #corner-bl {
+      content: '';
+      position: absolute;
+      width: 24px; height: 24px;
+      border-color: var(--gold);
+      border-style: solid;
+      opacity: 0.6;
+    }
+    #spiral-wrap::before { top: 0;    left: 0;  border-width: 2px 0 0 2px; }
+    #spiral-wrap::after  { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+    #corner-tr { top: 0;    right: 0; border-width: 2px 2px 0 0; }
+    #corner-bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+
+    #status-text {
+      font-size: 12px;
+      letter-spacing: 4px;
+      color: rgba(255,255,255,0.25);
+      text-transform: uppercase;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50%       { opacity: 0.8; }
+    }
+
+    #start-btn {
+      display: none;
+      margin-top: 24px;
+      padding: 12px 40px;
+      background: transparent;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    #start-btn:hover { background: rgba(201,168,76,0.1); }
+
+    /* ═══ AR SCREEN ═══ */
+    #ar-wrapper { position: fixed; inset: 0; }
+
+    #instruction {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(4, 8, 16, 0.75);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 10px 24px;
+      border-radius: 2px;
+      font-size: 12px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    #instruction.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- SCANNER SCREEN -->
+  <div id="loading-screen">
+    <div id="loading-title">Point · Reveal · See</div>
+
+    <div id="spiral-wrap">
+      <canvas id="spiral-canvas" width="280" height="280"></canvas>
+      <div id="scan-line"></div>
+      <div id="corner-tr"></div>
+      <div id="corner-bl"></div>
+    </div>
+
+    <div id="status-text">Loading...</div>
+    <button id="start-btn" onclick="startAR()">Reveal</button>
+  </div>
+
+  <!-- AR SCENE -->
+  <div id="ar-wrapper">
+    <div id="instruction">Point at the fountain</div>
+
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets__16_.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
+      color-space="sRGB"
+      renderer="colorManagement: true"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      id="ar-scene"
+    >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0">
+
+        <!-- =============================================
+             YOUR WORDS — change the value below
+             ============================================= -->
+        <a-text
+          value="Change this to your words"
+          position="0 0 0.1"
+          scale="0.5 0.5 0.5"
+          align="center"
+          color="#c9a84c"
+          text="shader: msdf; negate: false;"
+        ></a-text>
+
+        <a-plane
+          position="0 0 0.05"
+          width="1.4"
+          height="0.35"
+          color="#040810"
+          opacity="0.5"
+        ></a-plane>
+
+      </a-entity>
+    </a-scene>
+  </div>
+
+  <script>
+    // FIBONACCI SPIRAL
+    const canvas = document.getElementById("spiral-canvas");
+    const ctx    = canvas.getContext("2d");
+    const CX = 140, CY = 140;
+    let phase = 0;
+
+    // Pulse rings — each ring has a radius, opacity, hue, and speed
+    // They start small, expand outward, fade, then reset
+    const NUM_RINGS = 6;
+    const rings = Array.from({ length: NUM_RINGS }, (_, i) => ({
+      r:     20 + i * 28,       // staggered starting radii so they don't all start together
+      hue:   (i * 60) % 360,
+      speed: 0.6 + i * 0.15,   // outer rings move slightly faster
+      opacity: 1 - (i / NUM_RINGS) * 0.5
+    }));
+
+    function drawSpiral() {
+      ctx.clearRect(0, 0, 280, 280);
+
+      // Centre glow
+      const grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, 140);
+      grad.addColorStop(0, "rgba(255,255,255,0.07)");
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 280, 280);
+
+      ctx.save();
+      ctx.translate(CX, CY);
+
+      // ── PULSING RINGS ──
+      // Draw rings BEHIND the spiral
+      for (const ring of rings) {
+        const alpha = ring.opacity * (1 - ring.r / 200); // fade as they expand
+        if (alpha > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, ring.r, 0, Math.PI * 2);
+          ctx.strokeStyle = `hsla(${ring.hue}, 100%, 65%, ${alpha.toFixed(2)})`;
+          ctx.lineWidth   = 1.5;
+          ctx.shadowColor = `hsla(${ring.hue}, 100%, 65%, 0.4)`;
+          ctx.shadowBlur  = 8;
+          ctx.stroke();
+        }
+
+        // Expand outward
+        ring.r   += ring.speed;
+        ring.hue  = (ring.hue + 0.4) % 360;
+
+        // When ring drifts off canvas, reset it back to the centre to form a new one
+        if (ring.r > 200) {
+          ring.r       = 8 + Math.random() * 15; // slightly random restart so they feel organic
+          ring.opacity = 0.7 + Math.random() * 0.3;
+          ring.speed   = 0.5 + Math.random() * 0.5;
+        }
+      }
+
+      // ── SPIRAL ──
+      // Bigger: 6 turns, growth 0.032, base scale 8 — fills the canvas
+      const turns = 6, steps = 900, growth = 0.032;
+      const segmentSize = 8;
+
+      for (let i = 0; i < steps; i += segmentSize) {
+        ctx.beginPath();
+        for (let j = i; j <= Math.min(i + segmentSize, steps); j++) {
+          const t = (j / steps) * turns * Math.PI * 2;
+          const r = Math.exp(growth * t) * 8;
+          const x = r * Math.cos(t + phase);
+          const y = r * Math.sin(t + phase);
+          j === i ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        const hue = ((i / steps) * 360 + phase * 60) % 360;
+        ctx.strokeStyle = `hsla(${hue}, 100%, 65%, 0.95)`;
+        ctx.lineWidth   = 2.5;
+        ctx.shadowColor = `hsla(${hue}, 100%, 65%, 1)`;
+        ctx.shadowBlur  = 10;
+        ctx.stroke();
+      }
+
+      // Glowing tip dot
+      const tipT   = turns * Math.PI * 2;
+      const tipR   = Math.exp(growth * tipT) * 8;
+      const tipHue = (phase * 60) % 360;
+      ctx.beginPath();
+      ctx.arc(tipR * Math.cos(tipT + phase), tipR * Math.sin(tipT + phase), 4, 0, Math.PI * 2);
+      ctx.fillStyle   = `hsl(${tipHue}, 100%, 75%)`;
+      ctx.shadowColor = `hsl(${tipHue}, 100%, 75%)`;
+      ctx.shadowBlur  = 28;
+      ctx.fill();
+
+      ctx.restore();
+      phase += 0.010;
+      requestAnimationFrame(drawSpiral);
+    }
+
+    drawSpiral();
+
+    // When AR has loaded, show the Reveal button
+    const scene = document.getElementById("ar-scene");
+
+    scene.addEventListener("loaded", () => {
+      document.getElementById("status-text").innerText = "Ready";
+      document.getElementById("start-btn").style.display = "block";
+    });
+
+    // User taps Reveal
+    function startAR() {
+      document.getElementById("loading-screen").classList.add("fade-out");
+
+      const mindar = scene.systems["mindar-image-system"];
+      if (mindar) mindar.start();
+
+      scene.addEventListener("targetFound", () => {
+        document.getElementById("instruction").classList.add("hidden");
+      });
+      scene.addEventListener("targetLost", () => {
+        document.getElementById("instruction").classList.remove("hidden");
+      });
+    }
+  </script>
+</body>
+</html>
